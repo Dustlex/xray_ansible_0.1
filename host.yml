@@ -1,0 +1,4 @@
+localhost: # имя группы
+  hosts: # секция определения хостов этой группы
+    local: # имя хоста
+      ansible_connection: local #параметр подключения

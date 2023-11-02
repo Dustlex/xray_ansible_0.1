@@ -1,0 +1,38 @@
+---
+# tasks file for xray
+- name: xray install
+  block:
+   - name: check dir # проверим наличие диры
+     stat:  # модуль собирает кучу инфы по файлу (файл или дира, владелец, размер, группа, доступ и т.д.)
+      path: "~/xray_0.3"
+     register: check_dir # помещаем вывод модуля стат в переменную check_dir
+
+   - name: rm dir # удалим если она есть
+     file: # модуль работы с файлами
+       path: "~/xray_0.3"
+       state: absent
+     when: check_dir.stat.exists # exists - внутренняя переменная stat, которую как и остальные, мы записали в check_dir
+
+   - name: git clone
+     ansible.builtin.git: # модуль работы с гитом
+       repo: "https://github.com/Dustlex/xray_02_compose.git"
+       dest: "~/xray_0.3"
+
+   - name: writing in the env
+     ansible.builtin.template: # модуль для перезаписи файла шаблоном
+       src: env.j2 # j2 расширение, из-за скриптого языка джинджа
+       dest: "~/xray_0.3/.env"
+     vars:
+       UUID: "{{ UD }}"
+       PASS: "{{ PS }}"
+
+   - name: remove container if it exist
+     community.docker.docker_container: # модуль работы с контейнерами
+       name: xray_1.2 
+       state: absent
+     ignore_errors: yes # чтобы выполнение не прерывалось, в случае если удалять нечего
+
+   - name: docker compose up
+     command: docker compose up -d
+     args:
+       chdir: "~/xray_0.3" # директория где выполняется команда

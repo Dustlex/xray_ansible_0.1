@@ -1,0 +1,51 @@
+---
+# tasks file for preconfig
+   - name: docker install
+     block:
+      - name: add universe
+        apt_repository: # тут используем переменную {{ ansible_destribution_release }} которая из проверки системы берет ее кодовое имя.
+         repo: "deb http://us.archive.ubuntu.com/ubuntu/ {{ ansible_distribution_release }} universe"
+         state: present
+
+      - name: install_extra
+        apt:
+         name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+         update-cache: yes
+         cache_valid_time: 86400
+
+      - name: Add Docker GPG apt Key
+        apt_key:
+         url: https://download.docker.com/linux/ubuntu/gpg
+         state: present
+
+      - name: Add Docker Repository
+        apt_repository:
+         repo: deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+         state: present
+
+      - name: install docker-ce
+        apt:
+         name: docker-ce # может принимать и единичные значения, не списком как выше
+         #update-cache: yes
+
+      - name: check docker # проверяем докер перезапуская сервис
+        service:
+         name: docker
+         state: restarted
+         enabled: yes # проверка что при перезагрузке он запущен
+
+
+#     - name: user_create
+#        user:
+#         name: "{{ ansible_user }}" # пользователь которого добавляем (тот же от кого сейчас работаем)
+#         groups: docker
+#         append: true # если будет false, он удалит пользователя из всех групп кроме докер
+
+    # - name: reboot # ребут убираем, т.к. выполняем на локалхосте
+    #    reboot:
+     become: yes
