@@ -1,0 +1,19 @@
+- name: xray server # просто имя задачи
+  hosts: localhost # указание группы хостов localhost, что мы задали в hosts
+  vars_prompt:
+  - name: domen
+    prompt: "insert domain for hiding, www.microsoft.com as an example"
+    private: false
+  - name: UD
+    prompt: "insert UUID value, you can skip it, value will be generated automatically"
+    private: false
+  - name: shID
+    prompt: "insert short ID, you can skip it, value will be generated automatically"
+    private: false
+  - name: prvKey
+    prompt: "insert privateKey, you can skip it, value will be generated automatically"
+    private: false
+  - name: pblKey
+    prompt: "insert publicKey, you can skip it, value will be generated automatically"
+  roles: # раздел с ролями применымыми к этому хосту
+    - role: xray-xtls-real

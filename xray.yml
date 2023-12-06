@@ -1,0 +1,11 @@
+- name: xray server # просто имя задачи
+  hosts: localhost # указание группы хостов localhost, что мы задали в hosts
+  vars_prompt:
+  - name: UD
+    prompt: "insert UUID value, you can use any online UUID-generator"
+    private: false
+  - name: PS
+    prompt: "insert PASS value, the value must be a 16-character base64 encoded password"
+    private: false
+  roles: # раздел с ролями применымыми к этому хосту
+    - role: xray

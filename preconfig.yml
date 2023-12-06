@@ -1,0 +1,4 @@
+- name: xray server # просто имя задачи
+  hosts: localhost # указание группы хостов localhost, что мы задали в hosts
+  roles: # раздел с ролями применымыми к этому хосту
+    - role: preconfig

@@ -1,0 +1,57 @@
+---
+# tasks file for xray
+- name: xray install
+  block:
+   - name: check dir # проверим наличие диры
+     stat:  # модуль собирает кучу инфы по файлу (файл или дира, владелец, размер, группа, доступ и т.д.)
+      path: "~/xtls_reality_01"
+     register: check_dir # помещаем вывод модуля стат в переменную check_dir
+
+   - name: rm dir # удалим если она есть
+     file: # модуль работы с файлами
+       path: "~/xtls_reality_01"
+       state: absent
+     when: check_dir.stat.exists # exists - внутренняя переменная stat, которую как и остальные, мы записали в check_dir
+
+   - name: git clone
+     ansible.builtin.git: # модуль работы с гитом
+       repo: "https://github.com/Dustlex/xtls_reality_01.git"
+       dest: "~/xtls_reality_01"
+
+   - name: writing in the env
+     ansible.builtin.template: # модуль для перезаписи файла шаблоном
+       src: env_xtls.j2 # j2 расширение, из-за скриптого языка джинджа, сам он в корне проекта
+       dest: "~/xtls_reality_01/.env" # куда он пишется после изменения
+     vars:
+       DOM: "{{ domen }}"
+       UUID: "{{ UD }}"
+       SID: "{{ shID }}"
+       PRK: "{{ prvKey }}"
+       PBK: "{{ pblKey }}"
+
+   - name: remove container if it exist
+     community.docker.docker_container: # модуль работы с контейнерами
+       name: xray_xtls_real.03 # контейнер запускаемый этим таском (удаление на случай перезапуска)
+       state: absent
+     ignore_errors: yes # чтобы выполнение не прерывалось, в случае если удалять нечего
+
+   - name: remove container if it exist
+     community.docker.docker_container: # модуль работы с контейнерами
+       name: xray_1.2 # контейнер запускаемый другой ролью, удаляем чтобы избежать конфликтов
+       state: absent
+     ignore_errors: yes # чтобы выполнение не прерывалось, в случае если удалять нечего
+
+   - name: docker compose up
+     command: docker compose up -d
+     args:
+       chdir: "~/xtls_reality_01" # директория где выполняется команда
+
+   - name: server_info # запускаем скрипт для вывода данных для подключения
+     script: ~/xtls_reality_01/server_info.sh
+     args:
+       chdir: "{{ ansible_env.HOME }}/xtls_reality_01/" # тут используем внутреннюю переменную ансибл для того чтобы указать абсолютный путь вместо ~/xtls_reality_01/ (т.к. для этого модуля - не работает)
+     register: result_info #помещаем вывод в переменную (внутри нее  есть свои переменные, например stdout и stderr
+
+   - name: Connection data for clients # выводим переменную
+     debug: 
+      msg: "{{ result_info.stdout_lines }}" # из переменной result_info берем ее переменную stdout, и чтобы переход строки отображался нормально, а не как \n, используем приписку _lines

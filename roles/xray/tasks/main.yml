@@ -28,9 +28,16 @@
 
    - name: remove container if it exist
      community.docker.docker_container: # модуль работы с контейнерами
-       name: xray_1.2 
+       name: xray_1.2 # контейнер запускаемый этим таском (удаление на случай перезапуска)
        state: absent
      ignore_errors: yes # чтобы выполнение не прерывалось, в случае если удалять нечего
+
+   - name: remove container if it exist
+     community.docker.docker_container: # модуль работы с контейнерами
+       name: xray_xtls_real.03 # контейнер запускаемый другой ролью, мы его удаляем т.к. они будут конфликтовать из-за сети
+       state: absent
+     ignore_errors: yes # чтобы выполнение не прерывалось, в случае если удалять нечего
+
 
    - name: docker compose up
      command: docker compose up -d
