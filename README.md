@@ -11,3 +11,4 @@ ansible-playbook -i host.yml all.yml -e "role=preconfig"
 ```
 ansible-playbook -i host.yml all.yml -e "role=xray-xtls-real"
 ```
+Выведенные в параграфе TASK [xray-xtls-real : Connection data for clients] данные, использовать для клиентов по типу Nekoray и т.д.
