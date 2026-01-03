@@ -1,51 +1,89 @@
----
-# tasks file for preconfig
-   - name: docker install
-     block:
-      - name: add universe
-        apt_repository: # тут используем переменную {{ ansible_destribution_release }} которая из проверки системы берет ее кодовое имя.
-         repo: "deb http://us.archive.ubuntu.com/ubuntu/ {{ ansible_distribution_release }} universe"
-         state: present
+# доработанный кусок моей старой сборки впн - https://github.com/Dustlex/xray_ansible_0.1
+    - name: installation_block
+      block:
+        - name: apt_preparation 
+          apt: #просто чистим возможные конфликты
+            name:
+             - docker.io
+             - docker-doc
+             - docker-compose
+             - docker-compose-v2
+             - podman-docker
+            state: absent
 
-      - name: install_extra
-        apt:
-         name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-          - lsb-release
-         update-cache: yes
-         cache_valid_time: 86400
+    - name: key_block_for_old_ubuntu # раньше его небыло до 24-ой убунты
+      block: 
+        - name: add_key_block # отлично работающий таск, но убунту 24.04 все похерил, apt-key команду удалили
+          apt_key: #добавляем ключ для репа модулем apt_key
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
 
-      - name: Add Docker GPG apt Key
-        apt_key:
-         url: https://download.docker.com/linux/ubuntu/gpg
-         state: present
+        - name: add_docker_repository_to_apt
+          apt_repository: # тут сложнее, добавляем репозиторий этим модулем, после ссылки - переменная из ansible_facts (инфа о системе собранная ансибл), эта переменная - кодовое имя системы для репозитория
+            repo: deb https://download.docker.com/linux/ubuntu {{ansible_facts.lsb.codename}} stable # пробелы внезапно важны
+            state: present
 
-      - name: Add Docker Repository
-        apt_repository:
-         repo: deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
-         state: present
+        - debug:
+           msg: "OLD UBUNTU - {{ ansible_facts.lsb.release }} - USING OLD FUCKING KEY METHOD"
 
-      - name: install docker-ce
-        apt:
-         name: docker-ce # может принимать и единичные значения, не списком как выше
-         #update-cache: yes
+      when: ansible_facts.lsb.release is version('18.04', '<=') # с 20.04 apt-key стал deprecated(
+    
+    - name: new_key_block_for_new_ubuntu
+      block:
+        - name: create_keyrings_dir
+          file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
 
-      - name: check docker # проверяем докер перезапуская сервис
-        service:
-         name: docker
-         state: restarted
-         enabled: yes # проверка что при перезагрузке он запущен
+        - name: get_key # костыль через шелл, т.к. get_url тоже отвалился
+          #get_url: # тоже в 24.04 сломалось но это скорее приколы нового системного питона 3.12
+          #  url: https://download.docker.com/linux/ubuntu/gpg
+          # dest: /etc/apt/keyrings/docker.gpg
+          #  mode: '0644'
+          #  Ниже работа через GPG, относительно новая вещь, gpg --dearmor берет скачанный текст и конвертирует его в gpg бинарь в нужную диру для таких бинарных ключей
+          shell: |
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          args: 
+            creates: /etc/apt/keyrings/docker.gpg # пропустить таск если этот файл уже есть
+          become: yes
 
 
-#     - name: user_create
-#        user:
-#         name: "{{ ansible_user }}" # пользователь которого добавляем (тот же от кого сейчас работаем)
-#         groups: docker
-#         append: true # если будет false, он удалит пользователя из всех групп кроме докер
+        - name: add_docker_repository_to_apt
+          apt_repository:
+            repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_facts.lsb.codename }} stable # пробелы важны
+            state: present
+            filename: docker
 
-    # - name: reboot # ребут убираем, т.к. выполняем на локалхосте
-    #    reboot:
-     become: yes
+        - debug:
+            msg: "NEWER UBUNTU - {{ ansible_facts.lsb.release }} - USING NEWER METHOD"
+
+      when: ansible_facts.lsb.release is version('18.04', '>')
+    
+    - name: docker installation
+      apt: #после добавления ключа и репозитория, ставим все модули
+        name: 
+         - docker-ce
+         - docker-ce-cli
+         - containerd.io
+         - docker-buildx-plugin
+         - docker-compose-plugin
+        state: present
+        update_cache: yes # обновим кеш пакетного менеджера (apt get update)
+
+    - debug: # просто вывод псевдонима системы, для нас, на работу не влияет
+        msg: " {{ ansible_facts.lsb.codename }} - {{ ansible_facts.lsb.release }}"
+      become: yes
+
+    - name: apply_and_test_block
+      block:
+        - name: reboot 
+          reboot: # ребут без доп параметров, модуль просто ребутит
+
+        - name: run_docker_test #кустарный тест через command, вывод всего что есть, мы пихаем в массив в переменную check1
+          command: "docker run hello-world"
+          register: check1 # пихаем
+
+        - debug:
+           var: check1.failed # кустарная проверка, в массиве есть параметр failed, который получает true или false при исполнении. Т.е. тут должен быть один ответ (failed:false), ну а если тру то пизда
+      become: yes
