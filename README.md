@@ -1,4 +1,4 @@
-В текущий момент работает с ubuntu 
+В текущий момент работает с ubuntu от 16.04 до 24.04+
 1) Копируем репозиторий: git clone https://github.com/Dustlex/xray_ansible_0.1.git
 2) Заходим в загруженную директорию: cd xray_ansible_0.1/
 3) Устанавливаем pip командой: apt install python3-pip
